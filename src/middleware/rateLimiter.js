@@ -1,14 +1,25 @@
+// backend/src/middleware/rateLimiter.js
 const rateLimit = require('express-rate-limit')
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
-  standardHeaders: 'draft-7', // Draft-7: combined `RateLimit` header
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
+// Rate limiter umum
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 100, // max 100 request per 15 menit
   message: {
-    status: 429,
-    message: 'Too many requests from this IP, please try again after 15 minutes'
+    success: false,
+    message: 'Too many requests, please try again later.'
   }
 })
 
-module.exports = limiter
+// Rate limiter ketat untuk auth
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 5, // max 5 percobaan login per 15 menit
+  message: {
+    success: false,
+    message: 'Too many login attempts, please try again after 15 minutes.'
+  },
+  skipSuccessfulRequests: true // tidak hitung request yang berhasil
+})
+
+module.exports = { generalLimiter, authLimiter }

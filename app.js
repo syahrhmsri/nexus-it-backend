@@ -1,43 +1,47 @@
-// backend/app.js
+require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const helmet = require('helmet')
-const rateLimiter = require('./src/middleware/rateLimiter')
+const { generalLimiter } = require('./src/middleware/rateLimiter')
 
 const app = express()
 
-// Middleware
 app.use(helmet())
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }))
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
-app.use(rateLimiter)
 
-// Static files (uploads)
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true }))
+app.use(generalLimiter)
 app.use('/uploads', express.static('uploads'))
 
-// Routes
+// ROUTES
 app.use('/api/auth', require('./src/routes/auth.routes'))
 app.use('/api/tickets', require('./src/routes/ticket.routes'))
 app.use('/api/assets', require('./src/routes/asset.routes'))
-app.use('/api/users', require('./src/routes/user.routes'))
+app.get('/api/reports/tickets/export', require('./src/controllers/report.controller').exportTicketsCSV)
+app.get('/api/reports/assets/export', require('./src/controllers/report.controller').exportAssetsCSV)
 
-// Health check
 app.get('/health', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'OK',
-    service: 'NEXUS IT Backend',
+    service: 'NEXUS IT Backend (Supabase Version)',
     timestamp: new Date()
   })
 })
 
-// Error handler
+// Error Handling 404
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route tidak ditemukan' })
+})
+
+// Global Error Handler
 app.use((err, req, res, next) => {
   console.error(err.stack)
-  res.status(500).json({ 
+  res.status(500).json({
+    success: false,
     message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   })
